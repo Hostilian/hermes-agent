@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Hermes Agent — Version Explorer</title>
+<style>
+  :root{
+    --bg:#0d0d10; --panel:#16161c; --panel2:#1d1d25; --border:#2a2a35;
+    --text:#e6e6ee; --muted:#9a9ab0; --accent:#e6b450; --accent2:#7aa2f7;
+    --green:#7ee787; --red:#ff7b72; --mono:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;background:var(--bg);color:var(--text);height:100vh;display:flex;flex-direction:column}
+  header{display:flex;align-items:center;gap:14px;padding:10px 16px;background:var(--panel);border-bottom:1px solid var(--border);flex-wrap:wrap}
+  header h1{font-size:16px;margin:0;color:var(--accent);white-space:nowrap}
+  header .sub{color:var(--muted);font-size:12px;white-space:nowrap}
+  select{background:var(--panel2);color:var(--text);border:1px solid var(--border);border-radius:6px;padding:6px 10px;font-size:14px;min-width:320px;font-family:var(--mono)}
+  .btns{margin-left:auto;display:flex;gap:8px}
+  button{background:var(--panel2);color:var(--text);border:1px solid var(--border);border-radius:6px;padding:6px 12px;cursor:pointer;font-size:13px}
+  button:hover{border-color:var(--accent)}
+  .meta{font-size:12px;color:var(--muted);padding:4px 16px;background:var(--panel);border-bottom:1px solid var(--border)}
+  .meta b{color:var(--text)}
+  main{flex:1;display:flex;min-height:0}
+  #tree{width:320px;min-width:220px;overflow:auto;background:var(--panel);border-right:1px solid var(--border);padding:8px}
+  #tree ul{list-style:none;margin:0;padding-left:14px}
+  #tree > ul{padding-left:4px}
+  #tree li{margin:2px 0}
+  .node{cursor:pointer;padding:3px 6px;border-radius:5px;display:flex;align-items:center;gap:6px;font-size:13px;white-space:nowrap}
+  .node:hover{background:var(--panel2)}
+  .node.file{color:var(--text)}
+  .node.dir{color:var(--accent2)}
+  .node.active{background:#2d2d3a;color:var(--accent)}
+  .tw{display:inline-block;width:14px;text-align:center;color:var(--muted)}
+  #view{flex:1;display:flex;flex-direction:column;min-width:0}
+  #crumb{padding:8px 14px;background:var(--panel);border-bottom:1px solid var(--border);font-family:var(--mono);font-size:12px;color:var(--muted);word-break:break-all}
+  #crumb b{color:var(--text)}
+  #content{flex:1;overflow:auto;padding:0}
+  pre{margin:0;padding:14px 16px;font-family:var(--mono);font-size:12.5px;line-height:1.55;white-space:pre-wrap;word-break:break-word}
+  #placeholder{display:flex;align-items:center;justify-content:center;height:100%;color:var(--muted);text-align:center;padding:20px;flex-direction:column;gap:8px}
+  .loading{color:var(--accent)}
+  a.link{color:var(--accent2)}
+  .pill{display:inline-block;background:var(--panel2);border:1px solid var(--border);border-radius:99px;padding:2px 10px;font-size:11px;color:var(--muted)}
+  .err{color:var(--red);padding:16px}
+  .hl{color:var(--accent)}
+</style>
+</head>
+<body>
+<header>
+  <h1>🜂 Hermes Agent</h1>
+  <span class="sub">Version Explorer</span>
+  <select id="ver" aria-label="Select version"></select>
+  <div class="btns">
+    <button id="home">📄 README</button>
+    <button id="agents">AGENTS.md</button>
+    <button id="release">RELEASE notes</button>
+  </div>
+</header>
+<div class="meta" id="meta">Loading versions…</div>
+<main>
+  <div id="tree"><div class="loading">Loading tree…</div></div>
+  <div id="view">
+    <div id="crumb"></div>
+    <div id="content"><div id="placeholder">Select a version and a file to explore.<br/>All 21 releases, browsable from GitHub.</div></div>
+  </div>
+</main>
+
+<script>
+// ---- Version metadata (embedded) ----
+const RELEASES = [{"isLatest":true,"name":"Hermes Agent v0.18.2 (2026.7.7.2)","publishedAt":"2026-07-08T03:11:22Z","tagName":"v2026.7.7.2"},{"isLatest":false,"name":"Hermes Agent v0.18.1 (2026.7.7)","publishedAt":"2026-07-08T01:15:00Z","tagName":"v2026.7.7"},{"isLatest":false,"name":"Hermes Agent v0.18.0 (2026.7.1) — The Judgment Release","publishedAt":"2026-07-01T20:08:06Z","tagName":"v2026.7.1"},{"isLatest":false,"name":"Hermes Agent v0.17.0 (v2026.6.19)","publishedAt":"2026-06-19T19:39:06Z","tagName":"v2026.6.19"},{"isLatest":false,"name":"Hermes Agent v0.16.0 (2026.6.5) — The Surface Release","publishedAt":"2026-06-06T00:55:58Z","tagName":"v2026.6.5"},{"isLatest":false,"name":"Hermes Agent v0.15.2 (2026.5.29.2)","publishedAt":"2026-05-29T13:37:26Z","tagName":"v2026.5.29.2"},{"isLatest":false,"name":"Hermes Agent v0.15.1 (2026.5.29) — The Patch Release","publishedAt":"2026-05-29T01:12:15Z","tagName":"v2026.5.29"},{"isLatest":false,"name":"Hermes Agent v0.15.0 (2026.5.28) — The Velocity Release","publishedAt":"2026-05-28T17:46:09Z","tagName":"v2026.5.28"},{"isLatest":false,"name":"Hermes Agent v0.14.0 (2026.5.16)","publishedAt":"2026-05-16T09:59:15Z","tagName":"v2026.5.16"},{"isLatest":false,"name":"Hermes Agent v0.13.0 (2026.5.7) — The Tenacity Release","publishedAt":"2026-05-07T16:23:08Z","tagName":"v2026.5.7"},{"isLatest":false,"name":"Hermes Agent v0.12.0 (2026.4.30)","publishedAt":"2026-04-30T18:31:21Z","tagName":"v2026.4.30"},{"isLatest":false,"name":"Hermes Agent v0.11.0 (2026.4.23)","publishedAt":"2026-04-23T22:32:13Z","tagName":"v2026.4.23"},{"isLatest":false,"name":"Hermes Agent v0.10.0 (2026.4.16)","publishedAt":"2026-04-16T19:53:25Z","tagName":"v2026.4.16"},{"isLatest":false,"name":"Hermes Agent v0.9.0 (v2026.4.13)","publishedAt":"2026-04-13T18:52:41Z","tagName":"v2026.4.13"},{"isLatest":false,"name":"Hermes Agent v0.8.0 (v2026.4.8)","publishedAt":"2026-04-08T11:56:44Z","tagName":"v2026.4.8"},{"isLatest":false,"name":"Hermes Agent v0.7.0 (v2026.4.3)","publishedAt":"2026-04-03T18:15:29Z","tagName":"v2026.4.3"},{"isLatest":false,"name":"Hermes Agent v0.6.0 (v2026.3.30)","publishedAt":"2026-03-30T15:30:14Z","tagName":"v2026.3.30"},{"isLatest":false,"name":"Hermes Agent v0.5.0 (v2026.3.28)","publishedAt":"2026-03-28T20:12:05Z","tagName":"v2026.3.28"},{"isLatest":false,"name":"Hermes Agent v0.4.0 (v2026.3.23)","publishedAt":"2026-03-24T05:34:23Z","tagName":"v2026.3.23"},{"isLatest":false,"name":"Hermes Agent v0.3.0 (v2026.3.17)","publishedAt":"2026-03-17T07:56:07Z","tagName":"v2026.3.17"},{"isLatest":false,"name":"Hermes Agent v0.2.0 (2026.3.12)","publishedAt":"2026-03-12T10:07:34Z","tagName":"v2026.3.12"}];
+const REPO_API = "https://api.github.com/repos/NousResearch/hermes-agent";
+const REPO_RAW = "https://raw.githubusercontent.com/NousResearch/hermes-agent";
+
+// Build a friendly display label
+function label(r){
+  // r.name like "Hermes Agent v0.18.2 (2026.7.7.2)"
+  const m = r.name.match(/v?(\d+\.\d+\.\d+(?:\.\d+)?)\s*\(([^)]+)\)/);
+  const ver = m ? m[1] : r.tagName.replace(/^v/,"");
+  const date = (r.publishedAt||"").slice(0,10);
+  const extra = (r.name.split("—").pop()||"").trim();
+  return `v${ver}${date?" · "+date:""}${extra?` · ${extra}`:""}`;
+}
+
+const verSel = document.getElementById('ver');
+const metaEl = document.getElementById('meta');
+RELEASES.slice().sort((a,b)=> b.publishedAt.localeCompare(a.publishedAt)).forEach(r=>{
+  const o=document.createElement('option');
+  o.value=r.tagName; o.textContent=label(r);
+  if(r.isLatest) o.textContent += "  ★";
+  verSel.appendChild(o);
+});
+metaEl.innerHTML = `<b>${RELEASES.length}</b> releases · source: <a class="link" href="https://github.com/NousResearch/hermes-agent" target="_blank" rel="noopener">NousResearch/hermes-agent</a> · browsing live from GitHub`;
+
+// ---- State ----
+let currentTag = verSel.value;
+let treeCache = {}; // tag -> tree map {path: {type, path, size}}
+let treeBuilt = {}; // tag -> bool
+
+verSel.addEventListener('change', ()=>{ currentTag = verSel.value; resetView(); loadTree(currentTag); });
+
+function resetView(){ document.getElementById('content').innerHTML='<div id="placeholder">Select a file from the tree.</div>'; document.getElementById('crumb').innerHTML=''; }
+
+// ---- Load recursive tree ----
+async function loadTree(tag){
+  const treeEl = document.getElementById('tree');
+  if(treeBuilt[tag]){ renderTree(tag); return; }
+  treeEl.innerHTML = '<div class="loading">Fetching file tree for '+tag+'…</div>';
+  try{
+    const res = await fetch(`${REPO_API}/git/trees/${tag}?recursive=1`, {headers:{Accept:"application/vnd.github+json"}});
+    if(!res.ok) throw new Error("GitHub API "+res.status+" (rate-limited? try later)");
+    const data = await res.json();
+    if(data.truncated){ console.warn("Tree truncated"); }
+    const map = {};
+    (data.tree||[]).forEach(t=>{ if(t.path && !t.path.includes('/node_modules/')) map[t.path]={type:t.type,path:t.path,size:t.size}; });
+    treeCache[tag]=map; treeBuilt[tag]=true;
+    renderTree(tag);
+  }catch(e){
+    treeEl.innerHTML = '<div class="err">Failed to load tree: '+e.message+'<br/><br/>GitHub allows ~60 unauthenticated API requests/hour. Retry shortly.</div>';
+  }
+}
+
+// Build nested structure
+function buildNested(map){
+  const root={dirs:{},files:[]};
+  for(const p in map){
+    const parts=p.split('/');
+    let cur=root;
+    for(let i=0;i<parts.length-1;i++){
+      const d=parts[i];
+      cur.dirs[d]=cur.dirs[d]||{dirs:{},files:[]};
+      cur=cur.dirs[d];
+    }
+    cur.files.push(parts[parts.length-1]);
+  }
+  return root;
+}
+
+function renderTree(tag){
+  const map=treeCache[tag];
+  const nested=buildNested(map);
+  const ul=document.createElement('ul');
+  fillUL(ul, nested, "");
+  const treeEl=document.getElementById('tree');
+  treeEl.innerHTML=''; treeEl.appendChild(ul);
+}
+
+function fillUL(ul, node, prefix){
+  const dirNames=Object.keys(node.dirs).sort();
+  const fileNames=node.files.slice().sort();
+  // dirs first
+  for(const d of dirNames){
+    const li=document.createElement('li');
+    const div=document.createElement('div');
+    div.className='node dir';
+    div.innerHTML=`<span class="tw">▸</span>📁 ${d}`;
+    const childUl=document.createElement('ul');
+    childUl.style.display='none';
+    div.onclick=()=>{ childUl.style.display = childUl.style.display==='none'?'block':'none'; div.querySelector('.tw').textContent = childUl.style.display==='none'?'▸':'▾'; };
+    fillUL(childUl, node.dirs[d], prefix+d+"/");
+    li.appendChild(div); li.appendChild(childUl); ul.appendChild(li);
+  }
+  for(const f of fileNames){
+    const li=document.createElement('li');
+    const div=document.createElement('div');
+    div.className='node file';
+    const icon = /\.(md|mdx|txt|rst)$/i.test(f)?'📝': /\.(py|ts|tsx|js|jsx|json|yaml|yml|sh|toml)$/i.test(f)?'⚙️': /\.(png|jpg|jpeg|gif|svg|webp)$/i.test(f)?'🖼️':'📄';
+    div.innerHTML=`<span class="tw"></span>${icon} ${f}`;
+    div.onclick=()=>openFile(prefix+f, div);
+    li.appendChild(div); ul.appendChild(li);
+  }
+}
+
+let activeNode=null;
+async function openFile(path, div){
+  if(activeNode) activeNode.classList.remove('active');
+  div.classList.add('active'); activeNode=div;
+  const crumb=document.getElementById('crumb');
+  crumb.innerHTML=`<b>${currentTag}</b> / ${path}`;
+  const content=document.getElementById('content');
+  content.innerHTML='<pre class="loading">Loading '+path+' …</pre>';
+  try{
+    const url=`${REPO_RAW}/${currentTag}/${path}`;
+    const res=await fetch(url);
+    if(!res.ok) throw new Error("HTTP "+res.status);
+    const text=await res.text();
+    const isImg=/\.(png|jpg|jpeg|gif|svg|webp)$/i.test(path);
+    if(isImg){
+      content.innerHTML=`<div style="padding:16px"><img src="${url}" style="max-width:100%" alt="${path}"/></div>`;
+    }else{
+      content.innerHTML='<pre id="code"></pre>';
+      document.getElementById('code').textContent = text.length>200000 ? text.slice(0,200000)+"\n\n… [truncated at 200k chars]" : text;
+    }
+  }catch(e){
+    content.innerHTML='<pre class="err">Could not load ${path}: '+e.message+'</pre>';
+  }
+}
+
+// ---- Quick buttons ----
+function findFirst(regex){
+  const map=treeCache[currentTag]||{};
+  const keys=Object.keys(map).filter(k=>regex.test(k));
+  // prefer root-level
+  keys.sort((a,b)=> a.split('/').length - b.split('/').length);
+  return keys[0];
+}
+document.getElementById('home').onclick=()=>{
+  const f=findFirst(/^README(\.md)?$/i) || findFirst(/readme/i);
+  if(f) openTop(f); else alert("No README in this version.");
+};
+document.getElementById('agents').onclick=()=>{
+  const f=findFirst(/^AGENTS\.md$/i) || findFirst(/agents\.md/i);
+  if(f) openTop(f); else alert("No AGENTS.md in this version.");
+};
+document.getElementById('release').onclick=()=>{
+  const f=findFirst(/^RELEASE_.*\.md$/i) || findFirst(/release/i);
+  if(f) openTop(f); else alert("No RELEASE notes in this version.");
+};
+function openTop(path){
+  // open from tree if rendered
+  const maps=treeCache[currentTag]||{};
+  const divs=[...document.querySelectorAll('#tree .node.file')];
+  const match=divs.find(d=>d.textContent.includes(path.split('/').pop()));
+  if(match){ match.click(); }
+  else { currentTag; openFile(path, {classList:{add(){},remove(){}},querySelector(){return{};}}); }
+}
+
+// ---- Init ----
+loadTree(currentTag);
+</script>
+</body>
+</html>
